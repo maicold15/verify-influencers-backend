@@ -1,76 +1,51 @@
-// backend/src/services/influencerService.js
 import axios from 'axios';
 
-const TWITTER_BEARER_TOKEN = process.env.TWITTER_BEARER_TOKEN;
+// Simulamos 3 "influencers" con su id, wikiTitle, etc.
+let mockInfluencers = [
+  { id: '1', wikiTitle: 'Andrew_Huberman', name: 'Andrew Huberman', score: 88, followers: 4200000 },
+  { id: '2', wikiTitle: 'Peter_Attia', name: 'Peter Attia', score: 94, followers: 1200000 },
+  { id: '3', wikiTitle: 'Rhonda_Patrick', name: 'Rhonda Patrick', score: 90, followers: 980000 },
+];
 
 /**
- * fetchInfluencers: Llama a la Twitter API
+ * GET /api/influencers
+ * Retorna lista simple para Leaderboard
  */
 export async function fetchInfluencers() {
-  console.log('[fetchInfluencers] Entrando...');
-  try {
-    // Por ejemplo, consultamos 2 usernames fijos
-    const usernames = ['hubermanlab', 'drpeterrl']; 
-    const requests = usernames.map((uname) =>
-      axios.get(`https://api.twitter.com/2/users/by/username/${uname}`, {
-        headers: { Authorization: `Bearer ${TWITTER_BEARER_TOKEN}` }
-      })
-    );
-
-    const responses = await Promise.all(requests);
-    // Mapeamos data
-    const influencers = responses.map((r) => {
-      const user = r.data.data;
-      return {
-        id: user.id,
-        name: user.name,
-        username: user.username,
-        score: 80,
-        followers: 0
-      };
-    });
-    console.log('[fetchInfluencers] OK. Devuelvo array de', influencers.length, 'influencers');
-    return influencers;
-  } catch (err) {
-    console.error('[fetchInfluencers] Error:', err.message);
-    // Para ver la data del response si es 401/403
-    if (err.response) {
-      console.error('[fetchInfluencers] ErrResponse:', err.response.status, err.response.data);
-    }
-    throw new Error('No se pudo obtener influencers de Twitter');
-  }
+  // Podemos devolver data local sin llamar a Wikipedia
+  return mockInfluencers.map(inf => ({
+    id: inf.id,
+    name: inf.name,
+    score: inf.score,
+    followers: inf.followers
+  }));
 }
 
 /**
- * fetchInfluencerDetails: saca los tweets recientes
+ * GET /api/influencers/:id
+ * Llama a Wikipedia para extraer un "summary" y lo retorna
  */
-export async function fetchInfluencerDetails(influencerId) {
-  console.log('[fetchInfluencerDetails] id:', influencerId);
+export async function fetchInfluencerDetails(id) {
+  const inf = mockInfluencers.find((x) => x.id === id);
+  if (!inf) throw new Error('Influencer not found');
+
+  const url = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=1&explaintext=1&format=json&titles=${inf.wikiTitle}`;
   try {
-    const url = `https://api.twitter.com/2/users/${influencerId}/tweets?max_results=5&tweet.fields=created_at`;
-    const resp = await axios.get(url, {
-      headers: { Authorization: `Bearer ${TWITTER_BEARER_TOKEN}` }
-    });
-    const tweets = resp.data.data || [];
-    console.log('[fetchInfluencerDetails] tweets found:', tweets.length);
+    const resp = await axios.get(url);
+    const pages = resp.data.query.pages;
+    const pageId = Object.keys(pages)[0];
+    const summary = pages[pageId].extract || '(No summary found)';
 
     return {
-      id: influencerId,
-      name: 'Desconocido',
-      score: 80,
-      followers: 9999,
-      claims: tweets.map((t) => ({
-        text: t.text,
-        created_at: t.created_at,
-        status: 'Unknown',
-        confidence: null
-      }))
+      id: inf.id,
+      name: inf.name,
+      score: inf.score,
+      followers: inf.followers,
+      summary,
+      claims: []
     };
   } catch (err) {
-    console.error('[fetchInfluencerDetails] Error:', err.message);
-    if (err.response) {
-      console.error('[fetchInfluencerDetails] ErrResponse:', err.response.status, err.response.data);
-    }
-    throw new Error('No se pudo obtener detalles de Twitter');
+    console.error('[fetchInfluencerDetails] Wikipedia Error:', err.message);
+    throw new Error('No se pudo obtener datos de Wikipedia');
   }
 }

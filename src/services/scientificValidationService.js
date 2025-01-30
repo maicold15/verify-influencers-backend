@@ -1,14 +1,16 @@
-// backend/src/services/scientificValidationService.js
 import axios from 'axios';
 
+// Ajusta si tienes .env
 const PUBMED_EMAIL = process.env.PUBMED_EMAIL || 'test@example.com';
 const NCBI_API_KEY = process.env.NCBI_API_KEY || '';
 
 export async function validateClaim(claimText) {
-  console.log('[validateClaim] checking in PubMed:', claimText);
+  console.log('[validateClaim] Checking in PubMed ->', claimText.slice(0, 50), '...'); // log truncated text
   try {
     const query = encodeURIComponent(claimText);
-    const url = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${query}&retmax=1&tool=VerifyInfluencers&email=${PUBMED_EMAIL}${NCBI_API_KEY ? `&api_key=${NCBI_API_KEY}` : ''}`;
+    const url = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${query}&retmax=1&tool=VerifyInfluencers&email=${PUBMED_EMAIL}${
+      NCBI_API_KEY ? `&api_key=${NCBI_API_KEY}` : ''
+    }`;
 
     const resp = await axios.get(url);
     const xmlData = resp.data;
@@ -17,7 +19,6 @@ export async function validateClaim(claimText) {
 
     let status = 'Questionable';
     let confidence = 50;
-
     if (count > 0) {
       status = 'Verified';
       confidence = 90;
@@ -25,7 +26,6 @@ export async function validateClaim(claimText) {
       status = 'Debunked';
       confidence = 20;
     }
-    console.log(`[validateClaim] PubMed says count=${count}, so status=${status}`);
 
     return {
       text: claimText,
@@ -33,10 +33,7 @@ export async function validateClaim(claimText) {
       confidence
     };
   } catch (err) {
-    console.error('[validateClaim] Error PubMed:', err.message);
-    if (err.response) {
-      console.error('[validateClaim] Status:', err.response.status, err.response.data);
-    }
+    console.error('[validateClaim] PubMed error:', err.message);
     return {
       text: claimText,
       status: 'Questionable',

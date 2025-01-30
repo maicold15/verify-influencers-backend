@@ -1,4 +1,3 @@
-// backend/src/controllers/influencerController.js
 import { fetchInfluencers, fetchInfluencerDetails } from '../services/influencerService.js';
 
 export async function getAllInfluencers(req, res) {

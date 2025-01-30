@@ -1,4 +1,3 @@
-// backend/src/controllers/researchController.js
 import { analyzeInfluencerContent } from '../services/aiService.js';
 
 export async function runResearch(req, res) {
